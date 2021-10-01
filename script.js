@@ -64,6 +64,15 @@ const inputClosePin = document.querySelector(".form__input--pin");
 createUserNames(accounts);
 
 let currentAccount;
+let sorted = false;
+
+const handleSort = function (e) {
+  e.preventDefault();
+  displayMovements(currentAccount, !sorted);
+  sorted = !sorted;
+};
+
+btnSort.addEventListener("click", handleSort);
 
 const handleLoanRequest = function (e) {
   e.preventDefault();
@@ -186,10 +195,11 @@ function createUserNames(accountsArr) {
   });
 }
 
-function displayMovements(account) {
+function displayMovements(account, sort = false) {
   const { movements } = account;
+  const movs = sort ? movements.slice().sort((a, b) => a - b) : movements;
   containerMovements.innerHTML = "";
-  movements.forEach((mov, i) => {
+  movs.forEach((mov, i) => {
     const type = mov > 0 ? "deposit" : "withdrawal";
 
     const html = `
