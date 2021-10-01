@@ -75,7 +75,7 @@ const inputClosePin = document.querySelector(".form__input--pin");
 
 createUserNames(accounts);
 
-const locale = navigator.language;
+let logoutTimerId;
 let loggedInUser = localStorage.getItem("loggedInUser");
 
 let currentAccount = loggedInUser
@@ -84,8 +84,10 @@ let currentAccount = loggedInUser
 
 let sorted = false;
 
-containerApp.style.opacity = 1;
-loggedInUser && updateUI(currentAccount);
+if (loggedInUser) {
+  containerApp.style.opacity = 1;
+  updateUI(currentAccount);
+}
 
 function formatDisplayDate(date, locale, noOptions = true) {
   const options = {
@@ -109,6 +111,25 @@ function formatDisplayNumber(value, locale, curr) {
     currency: curr,
   };
   return new Intl.NumberFormat(locale, options).format(value);
+}
+
+function startLogoutTimer() {
+  let timeRemaining = 120;
+  clearInterval(logoutTimerId);
+  logoutTimerId = setInterval(() => {
+    if (timeRemaining <= 0) {
+      localStorage.removeItem("loggedInUser");
+      loggedInUser = null;
+      currentAccount = null;
+      containerApp.style.opacity = 0;
+      clearInterval(logoutTimerId);
+    }
+    const min = `${Math.trunc(timeRemaining / 60)}`.padStart(2, "0");
+    const sec = `${timeRemaining % 60}`.padStart(2, "0");
+
+    labelTimer.textContent = `${min}:${sec}`;
+    timeRemaining--;
+  }, 1000);
 }
 
 function getDateComponents(date) {
@@ -159,10 +180,12 @@ const handleLoanRequest = function (e) {
   const isQualified = movements.some((m) => m >= loanAmount * 0.1);
 
   if (loanAmount && loanAmount > 0 && isQualified) {
-    currentAccount.movements.push(loanAmount);
-    currentAccount.movementsDates.push(new Date().toISOString());
+    setTimeout(() => {
+      currentAccount.movements.push(loanAmount);
+      currentAccount.movementsDates.push(new Date().toISOString());
+      updateUI(currentAccount);
+    }, 5000);
     inputLoanAmount.value = "";
-    updateUI(currentAccount);
   }
 };
 
@@ -175,6 +198,7 @@ const handleLogin = function (e) {
   const pin = inputLoginPin.value;
   currentAccount = accounts.find((account) => account.username === username);
   if (currentAccount?.pin === Number(pin)) {
+    clearInterval(logoutTimerId);
     localStorage.setItem("loggedInUser", username);
     // display UI and a welcome message
     labelWelcome.textContent = `Welcome back ${
@@ -327,15 +351,25 @@ function displayMovements(account, sort = false) {
 }
 
 function updateUI(account) {
-  labelDate.textContent = formatDisplayDate(
-    new Date(),
-    currentAccount.locale,
-    false
-  );
+  function updateTime() {
+    if (currentAccount) {
+      const formattedDate = formatDisplayDate(
+        new Date(),
+        currentAccount.locale,
+        false
+      );
+      labelDate.textContent = formattedDate;
+      setTimeout(() => {
+        updateTime();
+      }, 1000 * 60);
+    }
+  }
 
+  updateTime();
   displayMovements(account);
   calcDisplayBalance(account);
   calcDisplaySummary(account);
+  startLogoutTimer();
 }
 /////////////////////////////////////////////////
 /////////////////////////////////////////////////
